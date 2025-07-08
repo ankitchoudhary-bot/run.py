@@ -12,7 +12,8 @@ outputs:
 
 implementation:
   container:
-    image: ankitdockerhubprofile/mnist-ff-trainer:latest
+    image: docker.io/ankitdockerhubprofile/mnist-ff-trainer:latest
+    imagePullPolicy: Always
     command:
       - python3
       - run.py
