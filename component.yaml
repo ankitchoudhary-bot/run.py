@@ -1,0 +1,23 @@
+name: Tune Hyperparameters
+description: Generic hyperparameter tuning using Katib for a given model type.
+
+inputs:
+  - name: model_type
+    type: String
+    description: "Choose one of ['sklearn', 'xgboost', 'pytorch']"
+
+outputs:
+  - name: best_hyperparams
+    type: JsonArray
+
+implementation:
+  container:
+    image: python:3.10
+    command:
+      - sh
+      - -c
+      - |
+        pip install --quiet torch torchvision tqdm kubernetes kubeflow-katib
+        python3 run.py --model_type "$0" --best_hyperparams "$1"
+      - {inputValue: model_type}
+      - {outputPath: best_hyperparams}
