@@ -12,12 +12,12 @@ outputs:
 
 implementation:
   container:
-    image: python:3.10
+    image: ankitdockerhubprofile/katib-run:latest
     command:
-      - sh
-      - -c
-      - |
-        pip install --quiet torch torchvision tqdm kubernetes kubeflow-katib
-        python3 run.py --model_type "$0" --best_hyperparams "$1"
+      - python3
+      - run.py
+      - --model_type
       - {inputValue: model_type}
+      - --best_hyperparams
       - {outputPath: best_hyperparams}
+
