@@ -12,7 +12,7 @@ outputs:
 
 implementation:
   container:
-    image: ankitdockerhubprofile/katib-run:latest
+    image: ankitdockerhubprofile/mnist-ff-trainer:latest
     command:
       - python3
       - run.py
