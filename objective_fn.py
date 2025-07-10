@@ -1,15 +1,15 @@
-import torch
-import torch.nn as nn
-from torchvision.datasets import MNIST
-from torchvision.transforms import Compose, ToTensor, Normalize, Lambda
-from torch.utils.data import DataLoader
-from torch.optim import Adam
-from tqdm import tqdm
-import time
-
 def objective(parameters):
     lr = float(parameters["lr"])
     threshold = float(parameters["threshold"])
+    
+    import torch
+    import torch.nn as nn
+    from torchvision.datasets import MNIST
+    from torchvision.transforms import Compose, ToTensor, Normalize, Lambda
+    from torch.utils.data import DataLoader
+    from torch.optim import Adam
+    from tqdm import tqdm
+    import time
 
     # Add small delay (e.g. if rate-limiting)
     time.sleep(5)
