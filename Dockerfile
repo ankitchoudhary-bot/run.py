@@ -1,15 +1,16 @@
 FROM pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
-
+# Set working directory
 WORKDIR /app
 
-COPY run.py .
+# Copy objective function file
 COPY objective_fn.py .
 
+# Install required dependencies
 RUN pip install --no-cache-dir \
-    kubeflow-katib \
-    torch \
-    torchvision \
-    tqdm \
-    kubernetes
+    torch torchvision tqdm \
+    kubeflow-katib kubernetes
 
-ENTRYPOINT ["python", "run.py"]
+# Optional: Set this so it's usable in Python modules
+ENV PYTHONPATH="/app"
+
+# No entrypoint needed, will be used by Elyra as a utility container

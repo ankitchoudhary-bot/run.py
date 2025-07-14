@@ -1,0 +1,92 @@
+name: Katib Tuner
+description: Launches a Katib experiment using an objective function defined in the container.
+
+inputs:
+  - name: model_type
+    type: String
+    description: "Choose one of ['sklearn', 'xgboost', 'pytorch']"
+
+outputs:
+  - name: best_hyperparams
+    type: JsonArray
+    description: Best parameter set
+
+implementation:
+  container:
+    image: ankitdockerhubprofile/objective_fn:latest
+    command:
+      - python3
+      - -u
+      - -c
+      - |
+        import argparse
+        import json
+        import os
+        from kubernetes import config
+        import kubeflow.katib as katib
+        from objective_fn import objective 
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--model_type", type=str, required=True)
+        parser.add_argument("--best_hyperparams", type=str, required=True)
+        args = parser.parse_args()
+
+        config.load_incluster_config()
+
+        model_type = args.model_type.lower()
+
+        search_spaces = {
+            "sklearn": [
+                {"name": "max_depth", "parameterType": "int", "feasibleSpace": {"min": "3", "max": "10"}},
+                {"name": "n_estimators", "parameterType": "int", "feasibleSpace": {"min": "50", "max": "150"}}
+            ],
+            "xgboost": [
+                {"name": "max_depth", "parameterType": "int", "feasibleSpace": {"min": "3", "max": "12"}},
+                {"name": "learning_rate", "parameterType": "double", "feasibleSpace": {"min": "0.01", "max": "0.3"}}
+            ],
+            "pytorch": [
+                {"name": "lr", "parameterType": "double", "feasibleSpace": {"min": "0.0001", "max": "0.1"}},
+                {"name": "threshold", "parameterType": "double", "feasibleSpace": {"min": "0.5", "max": "4"}}
+            ]
+        }
+
+
+
+        if model_type not in search_spaces:
+            raise ValueError(f"Unsupported model type: {model_type}")
+
+        parameters = {
+            p["name"]: katib.search.double(
+                min=p["feasibleSpace"]["min"],
+                max=p["feasibleSpace"]["max"]
+            ) 
+            for p in search_spaces[model_type]
+        }
+
+        katib_client = katib.KatibClient(namespace="admin")
+
+        katib_client.tune(
+            name="tune-experiment-ff",
+            objective=objective,
+            parameters=parameters,
+            objective_metric_name="accuracy",
+            max_trial_count=12,
+            parallel_trial_count=3,
+            algorithm_name="tpe",
+            resources_per_trial={"cpu": "4", "memory": "4Gi"}
+        )
+
+        katib_client.wait_for_experiment_condition(name="tune-experiment-ff")
+
+        best = katib_client.get_optimal_hyperparameters(name="tune-experiment-ff")
+        hp_dict = {p.name: float(p.value) for p in best.parameter_assignments}
+        print("Best hyperparameters:", hp_dict)
+
+        os.makedirs(os.path.dirname(args.best_hyperparams), exist_ok=True)
+        with open(args.best_hyperparams, "w") as f:
+            json.dump(hp_dict, f, indent=2)
+    args:
+      - --model_type
+      - {inputValue: model_type}
+      - --best_hyperparams
+      - {outputPath: best_hyperparams}
