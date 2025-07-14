@@ -5,6 +5,11 @@ inputs:
   - name: model_type
     type: String
     description: "Choose one of ['sklearn', 'xgboost', 'pytorch']"
+  
+  - name: image
+    type: String
+    description: "Docker image of model for tuning"
+    default: ankitdockerhubprofile/katib-run:latest
 
 outputs:
   - name: best_hyperparams
@@ -12,7 +17,7 @@ outputs:
 
 implementation:
   container:
-    image: ankitdockerhubprofile/katib-run:latest
+    image: {inputValue: image}
     command:
       - python3
       - run.py

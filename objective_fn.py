@@ -17,7 +17,7 @@ def objective(parameters):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Data loader
-    def MNIST_loaders(train_batch_size=5000, test_batch_size=1000):
+    def MNIST_loaders(train_batch_size=50000, test_batch_size=10000):
         transform = Compose([
             ToTensor(),
             Normalize((0.1307,), (0.3081,)),
@@ -38,7 +38,7 @@ def objective(parameters):
             self.relu = torch.nn.ReLU()
             self.opt = Adam(self.parameters(), lr=lr)
             self.threshold = threshold
-            self.num_epochs = 2
+            self.num_epochs = 500
 
         def forward(self, x):
             x_direction = x / (x.norm(2, 1, keepdim=True) + 1e-4)

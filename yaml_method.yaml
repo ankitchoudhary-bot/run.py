@@ -1,0 +1,56 @@
+apiVersion: kubeflow.org/v1beta1
+kind: Experiment
+metadata:
+  name: mnist-hpo
+  namespace: kubeflow
+spec:
+  objective:
+    type: maximize
+    goal: 0.95
+    objectiveMetricName: accuracy
+  algorithm:
+    algorithmName: random
+  parallelTrialCount: 2
+  maxTrialCount: 10
+  maxFailedTrialCount: 3
+  parameters:
+    - name: lr
+      parameterType: double
+      feasibleSpace:
+        min: "0.0001"
+        max: "0.1"
+    - name: threshold
+      parameterType: double
+      feasibleSpace:
+        min: "0.5"
+        max: "3.0"
+  trialTemplate:
+    primaryContainerName: training-container
+    trialParameters:
+      - name: lr
+        description: Learning rate
+        reference: lr
+      - name: threshold
+        description: Goodness threshold
+        reference: threshold
+    trialSpec:
+      apiVersion: batch/v1
+      kind: Job
+      spec:
+        template:
+          spec:
+            containers:
+              - name: training-container
+                image: ankitdockerhubprofile/katib_yaml_based:latest
+                command:
+                  - "python3"
+                  - "yaml_method.py"
+                  - "--lr"
+                  - "${trialParameters.lr}"
+                  - "--threshold"
+                  - "${trialParameters.threshold}"
+                resources:
+                  limits:
+                    cpu: "1"
+                    memory: "2Gi"
+            restartPolicy: Never

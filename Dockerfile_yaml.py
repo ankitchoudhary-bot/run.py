@@ -2,14 +2,11 @@ FROM pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
 
 WORKDIR /app
 
-COPY run.py .
-COPY objective_fn.py .
+COPY yaml_method.py .
 
 RUN pip install --no-cache-dir \
-    kubeflow-katib \
     torch \
     torchvision \
-    tqdm \
-    kubernetes
+    tqdm
 
-ENTRYPOINT ["python", "run.py"]
+ENTRYPOINT ["python", "yaml_method.py"]

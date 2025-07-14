@@ -27,7 +27,7 @@ search_spaces = {
     ],
     "pytorch": [
         {"name": "lr", "parameterType": "double", "feasibleSpace": {"min": "0.0001", "max": "0.1"}},
-        {"name": "threshold", "parameterType": "double", "feasibleSpace": {"min": "0.5", "max": "3"}}
+        {"name": "threshold", "parameterType": "double", "feasibleSpace": {"min": "0.5", "max": "4"}}
     ]
 }
 
@@ -46,7 +46,8 @@ parameters = {
 }
 
 
-katib_client = katib.KatibClient(namespace="kubeflow")
+katib_client = katib.KatibClient(namespace="admin")
+
 
 name = "tune-experiment-ff"
 katib_client.tune(
@@ -54,9 +55,10 @@ katib_client.tune(
     objective=objective,
     parameters=parameters,
     objective_metric_name="accuracy",
-    max_trial_count=3,
+    max_trial_count=12,
     parallel_trial_count=3,
-    resources_per_trial={"cpu": "2"},
+    resources_per_trial={"cpu": "4","memory": "4Gi"},
+    algorithm_name="tpe",
 )
 
 # [4] Wait until Katib Experiment is complete
@@ -66,11 +68,12 @@ katib_client.wait_for_experiment_condition(name=name)
 best = katib_client.get_optimal_hyperparameters(name=name)
 params = best.parameter_assignments
 hp_dict = {p.name: float(p.value) for p in params}
-
+print(hp_dict)
 dir_path = os.path.dirname(args.best_hyperparams)
 if dir_path:
     os.makedirs(dir_path, exist_ok=True)
 
 with open(args.best_hyperparams, "w") as f:
     json.dump(hp_dict, f,indent=2)
+
 
