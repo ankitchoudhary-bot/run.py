@@ -1,95 +1,103 @@
-name: Tune Hyperparameters
-description: Runs Katib hyperparameter tuning for a given model type and returns the best hyperparameters.
-
-inputs:
-  - name: model_type
-    type: String
-    description: "One of ['sklearn', 'xgboost', 'pytorch']"
+name: Build Model using Pytorch for FF
+description: Defines the FFNetwork model (pytorch) with forward-forward learning layers and saves it.
 
 outputs:
-  - name: best_hyperparams
-    type: JsonArray
-    description: "Best hyperparameter set found by Katib"
+  - {name: ff_model, type: Model}
 
 implementation:
   container:
-    image: ankitdockerhubprofile/katib-run:latest  # Replace with your image that includes objective_fn.py and Katib SDK
+    image: python:3.9
     command:
+      - sh
+      - -c
+      - |
+        PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet torch torchvision || \
+        PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet torch torchvision --user
+        exec "$0" "$@"
       - python3
       - -u
       - -c
       - |
         import argparse
-        import json
         import os
-        from kubernetes import client, config
-        from objective_fn import objective
-        import kubeflow.katib as katib
+        import torch
+        import torch.nn as nn
+        import torch.nn.functional as F
 
         parser = argparse.ArgumentParser()
-        parser.add_argument("--model_type", type=str, required=True)
-        parser.add_argument("--best_hyperparams", type=str, required=True)
+        parser.add_argument('--ff_model', type=str, required=True)
         args = parser.parse_args()
 
-        config.load_incluster_config()
+        class FFDense(nn.Module):
+            def __init__(self, in_features, out_features, threshold=1.5, lr=0.03, num_epochs=50):
+                super(FFDense, self).__init__()
+                self.linear = nn.Linear(in_features, out_features)
+                self.relu = nn.ReLU()
+                self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
+                self.threshold = threshold
+                self.num_epochs = num_epochs
 
-        model_type = args.model_type.lower()
+            def forward(self, x):
+                x_norm = torch.norm(x, p=2, dim=1, keepdim=True) + 1e-4
+                x_dir = x / x_norm
+                return self.relu(self.linear(x_dir))
 
-        search_spaces = {
-            "sklearn": [
-                {"name": "max_depth", "parameterType": "int", "feasibleSpace": {"min": "3", "max": "10"}},
-                {"name": "n_estimators", "parameterType": "int", "feasibleSpace": {"min": "50", "max": "150"}}
-            ],
-            "xgboost": [
-                {"name": "max_depth", "parameterType": "int", "feasibleSpace": {"min": "3", "max": "12"}},
-                {"name": "learning_rate", "parameterType": "double", "feasibleSpace": {"min": "0.01", "max": "0.3"}}
-            ],
-            "pytorch": [
-                {"name": "lr", "parameterType": "double", "feasibleSpace": {"min": "0.0001", "max": "0.1"}},
-                {"name": "threshold", "parameterType": "double", "feasibleSpace": {"min": "0.5", "max": "4"}}
-            ]
-        }
+            def forward_forward(self, x_pos, x_neg):
+                for _ in range(self.num_epochs):
+                    g_pos = torch.mean(self.forward(x_pos) ** 2, dim=1)
+                    g_neg = torch.mean(self.forward(x_neg) ** 2, dim=1)
+                    loss = torch.log(1 + torch.exp(torch.cat([-g_pos + self.threshold, g_neg - self.threshold], dim=0)))
+                    loss = loss.mean()
+                    self.optimizer.zero_grad()
+                    loss.backward()
+                    self.optimizer.step()
+                with torch.no_grad():
+                    return self.forward(x_pos), self.forward(x_neg), loss.item()
 
-        if model_type not in search_spaces:
-            raise ValueError(f"Unsupported model type: {model_type}")
+        class FFNetwork(nn.Module):
+            def __init__(self, dims, lr=0.03, threshold=1.5, num_epochs=50):
+                super(FFNetwork, self).__init__()
+                self.layers = nn.ModuleList([
+                    FFDense(dims[i], dims[i+1], lr=lr, threshold=threshold, num_epochs=num_epochs)
+                    for i in range(len(dims) - 1)
+                ])
 
-        hyper_parameters = search_spaces[model_type]
+            def overlay_y_on_x(self, x, y):
+                max_per_sample = torch.amax(x, dim=1)
+                updates = torch.zeros((x.size(0), 10), device=x.device)
+                updates[range(x.size(0)), y] = max_per_sample
+                x[:, :10] = updates
+                return x
 
-        parameters = {
-            p["name"]: katib.search.double(
-                min=p["feasibleSpace"]["min"],
-                max=p["feasibleSpace"]["max"]
-            )
-            for p in hyper_parameters
-        }
+            def predict_one_sample(self, x):
+                goodness_per_label = []
+                for label in range(10):
+                    x_overlay = self.overlay_y_on_x(x.clone(), torch.tensor([label]*x.size(0), device=x.device))
+                    h = x_overlay
+                    goodness = []
+                    for layer in self.layers:
+                        h = layer(h)
+                        goodness.append(torch.mean(h ** 2, dim=1))
+                    goodness_sum = torch.sum(torch.stack(goodness, dim=1), dim=1)
+                    goodness_per_label.append(goodness_sum.unsqueeze(1))
+                return torch.cat(goodness_per_label, dim=1).argmax(dim=1)
 
-        katib_client = katib.KatibClient(namespace="admin")
-        name = "tune-experiment-ff"
-        katib_client.tune(
-            name=name,
-            objective=objective,
-            parameters=parameters,
-            objective_metric_name="accuracy",
-            max_trial_count=12,
-            parallel_trial_count=3,
-            resources_per_trial={"cpu": "4", "memory": "4Gi"},
-            algorithm_name="tpe",
-        )
+            def train_step(self, x, y):
+                x_pos = self.overlay_y_on_x(x.clone(), y)
+                y_neg = y[torch.randperm(y.size(0))]
+                x_neg = self.overlay_y_on_x(x.clone(), y_neg)
+                h_pos, h_neg = x_pos, x_neg
+                total_loss = 0.0
+                for layer in self.layers:
+                    h_pos, h_neg, loss = layer.forward_forward(h_pos, h_neg)
+                    total_loss += loss
+                return {"FinalLoss": total_loss / len(self.layers)}
 
-        katib_client.wait_for_experiment_condition(name=name)
-        best = katib_client.get_optimal_hyperparameters(name=name)
-        params = best.parameter_assignments
-        hp_dict = {p.name: float(p.value) for p in params}
-        print(hp_dict)
+        # Instantiate and save model
+        model = FFNetwork([784, 500, 500])
+        os.makedirs(os.path.dirname(args.ff_model), exist_ok=True)
+        torch.save(model.state_dict(), args.ff_model)
 
-        dir_path = os.path.dirname(args.best_hyperparams)
-        if dir_path:
-            os.makedirs(dir_path, exist_ok=True)
-
-        with open(args.best_hyperparams, "w") as f:
-            json.dump(hp_dict, f, indent=2)
     args:
-      - --model_type
-      - {inputValue: model_type}
-      - --best_hyperparams
-      - {outputPath: best_hyperparams}
+      - --ff_model
+      - {outputPath: ff_model}
