@@ -2,8 +2,11 @@ name: Build Model using Pytorch for FF
 description: Defines the FFNetwork model (pytorch) with forward-forward learning layers and saves it.
 
 inputs:
-  - {name: lr, type: Float}
-  - {name: threshold, type: Float}
+  - name: lr
+    type: String
+  - name: threshold
+    type: String
+
 
 outputs:
   - {name: ff_model, type: Model}
@@ -106,8 +109,8 @@ implementation:
 
     args:
       - --lr
-      - {inputValue: lr}
+      - "{{inputValue: lr}}"
       - --threshold
-      - {inputValue: threshold}
+      - "{{inputValue: threshold}}"
       - --ff_model
       - {outputPath: ff_model}
