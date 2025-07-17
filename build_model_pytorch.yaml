@@ -3,7 +3,7 @@ description: Defines the FFNetwork model (pytorch) with forward-forward learning
 
 inputs:
   - name: best_hyperparams
-    type: json
+    type: JsonObject
     description: "Best hyperparameters from Katib"
 
 outputs:
