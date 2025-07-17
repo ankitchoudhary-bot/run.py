@@ -109,7 +109,7 @@ implementation:
                 return {"FinalLoss": total_loss / len(self.layers)}
 
         # Instantiate and save model
-        model = FFNetwork([784, 500, 500],lr=args.lr, threshold=args.threshold)
+        model = FFNetwork([784, 500, 500],lr=lr, threshold=threshold)
         os.makedirs(os.path.dirname(args.ff_model), exist_ok=True)
         torch.save(model.state_dict(), args.ff_model)
 
