@@ -101,5 +101,7 @@ implementation:
         torch.save(model.state_dict(), args.ff_model)
 
     args:
+      - --best_hyperparams
+      - --{inputValue: best_hyperparams}
       - --ff_model
       - {outputPath: ff_model}
