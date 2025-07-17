@@ -20,7 +20,8 @@ implementation:
       - --model_type
       - {inputValue: model_type}
       - --best_hyperparams
-      - {outputPath: best_hyperparams}
+      # - {outputPath: best_hyperparams}
+      - {outputValue: best_hyperparams}
 
     
 
