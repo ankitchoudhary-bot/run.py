@@ -19,5 +19,5 @@ implementation:
       - --model_type
       - {inputValue: model_type}
       - --best_hyperparams
-      - {outputFile: best_hyperparams}
+      - {outputValue: best_hyperparams}
 
