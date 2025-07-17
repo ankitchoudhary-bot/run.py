@@ -55,14 +55,14 @@ katib_client.tune(
     objective=objective,
     parameters=parameters,
     objective_metric_name="accuracy",
-    max_trial_count=12,
-    parallel_trial_count=3,
+    max_trial_count=4,
+    parallel_trial_count=2,
     resources_per_trial={"cpu": "4","memory": "4Gi"},
     algorithm_name="tpe",
 )
 
 # [4] Wait until Katib Experiment is complete
-katib_client.wait_for_experiment_condition(name=name)
+katib_client.wait_for_experiment_condition(name=name,timeout=3600)
 
 # [5] Get the best hyperparameters.
 best = katib_client.get_optimal_hyperparameters(name=name)

@@ -1,0 +1,14 @@
+from torch_geometric.data import HeteroData
+import torch
+
+data = HeteroData()
+
+# Optional: node features (dummy one-hot or numeric vectors)
+data['supplier'].x = torch.tensor([[1.0], [0.0]])  # S1, S2
+data['warehouse'].x = torch.tensor([[0.5], [0.2]]) # W1, W2
+data['retailer'].x = torch.tensor([[0.3], [0.1], [0.9]])  # R1, R2, R3
+
+# Edge indices (source, target)
+data['supplier', 'delivers_to', 'warehouse'].edge_index = torch.tensor([[0, 1], [0, 1]], dtype=torch.long)
+data['warehouse', 'ships_to', 'retailer'].edge_index = torch.tensor([[0, 1, 1], [0, 1, 2]], dtype=torch.long)
+data['retailer', 'returns_to', 'warehouse'].edge_index = torch.tensor([[1], [1]], dtype=torch.long)

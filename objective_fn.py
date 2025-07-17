@@ -38,7 +38,7 @@ def objective(parameters):
             self.relu = torch.nn.ReLU()
             self.opt = Adam(self.parameters(), lr=lr)
             self.threshold = threshold
-            self.num_epochs = 500
+            self.num_epochs = 2
 
         def forward(self, x):
             x_direction = x / (x.norm(2, 1, keepdim=True) + 1e-4)

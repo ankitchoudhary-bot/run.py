@@ -109,8 +109,8 @@ implementation:
 
     args:
       - --lr
-      - "{{inputValue: lr}}"
+      - "${inputValue: lr}"
       - --threshold
-      - "{{inputValue: threshold}}"
+      - "${inputValue: threshold}"
       - --ff_model
       - {outputPath: ff_model}
