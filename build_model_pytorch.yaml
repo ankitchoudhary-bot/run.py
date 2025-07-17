@@ -102,6 +102,6 @@ implementation:
 
     args:
       - --best_hyperparams
-      - {inputValue: best_hyperparams}
+      - {inputPath: best_hyperparams}
       - --ff_model
       - {outputPath: ff_model}
