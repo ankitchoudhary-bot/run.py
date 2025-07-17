@@ -8,7 +8,7 @@ inputs:
 
 outputs:
   - name: best_hyperparams
-    type: JsonObject
+    type: jsonArray
 
 implementation:
   container:
