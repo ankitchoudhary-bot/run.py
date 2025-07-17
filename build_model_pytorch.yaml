@@ -1,7 +1,7 @@
 name: Build Model using Pytorch for FF
 description: Defines the FFNetwork model (pytorch) with forward-forward learning layers and saves it.
 inputs:
-  - {name: best_hyperparams,type: String}
+  - {name: best_hyperparams,type: JsonArray}
 outputs:
   - {name: ff_model, type: Model}
 
