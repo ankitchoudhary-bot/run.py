@@ -2,11 +2,9 @@ name: Build Model using Pytorch for FF
 description: Defines the FFNetwork model (pytorch) with forward-forward learning layers and saves it.
 
 inputs:
-  - name: lr
-    type: String
-  - name: threshold
-    type: String
-
+  - name: best_hyperparams
+    type: object
+    description: "Best hyperparameters from Katib"
 
 outputs:
   - {name: ff_model, type: Model}
@@ -27,15 +25,23 @@ implementation:
       - |
         import argparse
         import os
+        import json
         import torch
         import torch.nn as nn
         import torch.nn.functional as F
 
         parser = argparse.ArgumentParser()
         parser.add_argument('--ff_model', type=str, required=True)
-        parser.add_argument('--lr', type=float, required=True)
-        parser.add_argument('--threshold', type=float, required=True)
+        parser.add_argument('--best_hyperparams', type=str, required=True)
         args = parser.parse_args()
+
+        with open(args.best_hyperparams, 'r') as f:
+            params = json.load(f)
+
+        lr = params['lr']
+        threshold = params['threshold']
+
+        print(f"Using lr={lr} and threshold={threshold}")
 
         class FFDense(nn.Module):
             def __init__(self, in_features, out_features, threshold=1.5, lr=0.03, num_epochs=50):
@@ -108,9 +114,7 @@ implementation:
         torch.save(model.state_dict(), args.ff_model)
 
     args:
-      - --lr
-      - "${inputValue: lr}"
-      - --threshold
-      - "${inputValue: threshold}"
+      - --best_hyperparams
+      - {inputValue: best_hyperparams}
       - --ff_model
       - {outputPath: ff_model}
