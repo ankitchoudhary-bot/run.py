@@ -16,16 +16,11 @@ implementation:
     command:
       - python3
       - run.py
-      - --model_type
-      - {inputValue: model_type}
-      - --best_hyperparams
-      - {outputPath: best_hyperparams}
-
     args:
       - --model_type
       - {inputValue: model_type}
       - --best_hyperparams
-      - {outputValue: best_hyperparams}
+      - {outputPath: best_hyperparams}
 
     
 
