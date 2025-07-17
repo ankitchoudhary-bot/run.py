@@ -30,8 +30,15 @@ implementation:
         parser.add_argument('--best_hyperparams', type=str, required=True)
         args = parser.parse_args()
 
+        # Load hyperparameters from JSON
+        with open(args.best_hyperparams, "r") as f:
+          params = json.load(f)
+
+        lr = float(params["lr"])
+        threshold = float(params["threshold"])
+
         class FFDense(nn.Module):
-            def __init__(self, in_features, out_features, threshold=1.5, lr=0.03, num_epochs=50):
+            def __init__(self, in_features, out_features, threshold, lr, num_epochs=50):
                 super(FFDense, self).__init__()
                 self.linear = nn.Linear(in_features, out_features)
                 self.relu = nn.ReLU()
@@ -57,7 +64,7 @@ implementation:
                     return self.forward(x_pos), self.forward(x_neg), loss.item()
 
         class FFNetwork(nn.Module):
-            def __init__(self, dims, lr=0.03, threshold=1.5, num_epochs=50):
+            def __init__(self, dims, lr, threshold, num_epochs=50):
                 super(FFNetwork, self).__init__()
                 self.layers = nn.ModuleList([
                     FFDense(dims[i], dims[i+1], lr=lr, threshold=threshold, num_epochs=num_epochs)
@@ -96,7 +103,7 @@ implementation:
                 return {"FinalLoss": total_loss / len(self.layers)}
 
         # Instantiate and save model
-        model = FFNetwork([784, 500, 500])
+        model = FFNetwork([784, 500, 500], lr=lr, threshold=threshold)
         os.makedirs(os.path.dirname(args.ff_model), exist_ok=True)
         torch.save(model.state_dict(), args.ff_model)
 
